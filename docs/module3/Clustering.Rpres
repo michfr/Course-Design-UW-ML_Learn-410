@@ -1,0 +1,733 @@
+Clustering
+========================================================
+css: ../../assets/style/uw.css
+author: Justin Donaldson
+date: `r format(Sys.Date(), format="%B-%d-%Y")`
+autosize: true
+
+Applied Machine Learning 410
+---------------------------------
+(AKA: Birds of a feather)
+```{r setup, echo=FALSE}
+library(GGally)
+library(RColorBrewer)
+library(reshape2)
+opts_chunk$set(out.width='900px', dpi=200,cache=TRUE, fig.width=9, fig.height=5 )
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+```
+
+
+Clustering History
+========================================================
+Clustering first originated in *anthropology*
+![kroeber](img/kroeber.jpg)
+- Divide people into culturally similar groups
+- "...matrilinear descent and avoidance of
+relatives-in-law were or tended to be inherently connected."
+
+***
+![quant_expression](img/quant_expression.png)
+
+
+Clustering Needs
+========================================================
+![clustering needs](img/cluster_desire.png)
+“Data Clustering: 50 Years Beyond K-Means”, A.K. Jain (2008)
+
+Overview
+========================================================
+type : sub-section
+- Connectivity Clustering
+- Centroid-based Clustering
+- Density-based Clustering
+- Graph-based Clustering
+
+
+Connectivity-based clustering
+========================================================
+type : sub-section
+
+Hierarchical Clustering
+============
+- Group together observations based on *proximity* in space.
+- Agglomerative clustering (clusters grow from individual observations)
+
+***
+<a title="By [[File:Hierarchical_clustering_diagram.png#file|]]: Stathis Sideris on 10/02/2005 derivative work:  Mhbrugman ([[File:Hierarchical_clustering_diagram.png#file|]]) [CC-BY-SA-3.0 (http://creativecommons.org/licenses/by-sa/3.0/) or GFDL (http://www.gnu.org/copyleft/fdl.html)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AHierarchical_clustering_simple_diagram.svg"><img width="256" alt="Hierarchical clustering simple diagram" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Hierarchical_clustering_simple_diagram.svg/256px-Hierarchical_clustering_simple_diagram.svg.png"/></a>
+
+Hierarchical Clustering
+============
+For this analysis, let's look at arrest rates at a state level.
+```{r}
+  head(USArrests)
+```
+
+Hierarchical Clustering
+============
+The arrest information is not expressed in distances, so we need to transform it.
+```{r}
+  as.matrix(dist(USArrests))[1:6, 1:6]
+```
+
+Hierarchical Clustering
+============
+R provides a good hierarchical clustering method in the standard distribution.
+```{r}
+  hc <-hclust(dist(USArrests))
+  hc
+```
+
+Hierarchical Clustering
+============
+Plotting it gives us a representation of the clusters in a tree-like form.
+```{r}
+plot(hc, hang=-1)
+```
+
+Hierarchical Clustering
+============
+We can set a split point using "cutree", which will give us the desired number of clusters
+```{r}
+clusters = cutree(hc, k=5) # cut into 5 clusters
+clusters
+```
+
+Hierarchical Clustering
+============
+We can overlay the cluster boundaries on the original plot.
+```{r}
+plot(hc)
+rect.hclust(hc, k=5, border="purple")
+```
+
+Hierarchical Clustering
+===========
+```{r}
+USArrests[clusters==1,]
+USArrests[clusters==2,]
+```
+
+Hierarchical Clustering
+===========
+```{r,echo=FALSE}
+arrests = USArrests
+colors =brewer.pal(5, "Spectral")
+arrests$clusters = colors[as.numeric(clusters)]
+ggpairs(arrests, mapping=ggplot2::aes(fill=clusters,color=clusters))
+```
+
+
+Hierarchical Clustering
+============
+```{r}
+head(as.matrix(UScitiesD))
+```
+
+Hierarchical Clustering
+============
+```{r}
+hc = hclust(dist(UScitiesD))
+plot(hc)
+rect.hclust(hc, k=3, border="purple")
+```
+
+Hierarchical Clustering
+============
+Options - Distance (**good defaults**)
+-----
+- **Euclidean** $\|a-b \|_2 = \sqrt{\sum_i (a_i-b_i)^2}$
+- Squared Euclidean $\|a-b \|_2^2 = \sum_i (a_i-b_i)^2$
+- Manhattan $\|a-b \|_1 = \sum_i |a_i-b_i|$
+- Maximum Distance $\|a-b \|_\infty = \max_i |a_i-b_i|$
+- Mahalanobis Distance : ($S$  is the covariance matrix)* $\sqrt{(a-b)^{\top}S^{-1}(a-b)}$  
+
+Hierarchical Clustering
+============
+Options - Linkage (**good defaults**)
+-----
+- single = closest neighbor to any point in cluster gets merged 
+- **complete** = closest neighbor to furthest point in cluster gets added 
+- UPGMA - Average of distances $d(x,y)$ : ${1 \over {|\mathcal{A}|\cdot|\mathcal{B}|}}\sum_{x \in \mathcal{A}}\sum_{ y \in \mathcal{B}} d(x,y)$
+- centroid - distance between average of points in cluster.
+
+Centroid-based clustering
+========================================================
+type : sub-section
+
+
+K-Means
+============
+type: scrollable
+K-means is the classic centroid-based technique.
+```{r}
+  kc <-kmeans(dist(USArrests), 5)
+  kc
+```
+K-Means
+============
+K-means is the classic centroid-based technique.
+- Assignment Step : $S_i^{(t)} = \big \{ x_p : \big \| x_p - m^{(t)}_i \big \|^2 \le \big \| x_p - m^{(t)}_j \big \|^2 \ \forall j, 1 \le j \le k \big\}$
+  - Assign each data point to cluster whose mean is the smallest within-cluster sum of squares.
+- Update Step : $m^{(t+1)}_i = \frac{1}{|S^{(t)}_i|} \sum_{x_j \in S^{(t)}_i} x_j$
+  - Calculate new centroids
+
+K-Means
+============
+```{r}
+  colors =brewer.pal(5, "Spectral")
+  arrests$clusters = colors[kc$cluster]
+  ggpairs(arrests, mapping=ggplot2::aes(fill=clusters,color=clusters))
+```
+
+K-Means
+============
+K-means is more sensitive to scaling
+```{r}
+  arrests = data.frame(scale(USArrests))
+```
+
+```{r, echo=FALSE}
+  arrests = data.frame(scale(USArrests))
+  kc <-kmeans(arrests, 5)
+  arrests$clusters = colors[kc$cluster]
+  ggpairs(arrests, mapping=ggplot2::aes(fill=clusters,color=clusters))
+```
+
+Quick aside on scaling
+=====
+Field measurements can have different *scales*
+```{r}
+dat = cbind(
+  x=rnorm(100, mean =  0, sd = 1),
+  y=rnorm(100, mean = -4, sd = 2),
+  z=rnorm(100, mean =  4, sd = 9)
+  )
+```
+***
+```{r}
+boxplot(dat)
+```
+
+
+
+Quick aside on scaling
+=====
+In some cases it may be useful to *normalize* the scales.
+Standard normalization:
+- mean = 0
+- standard deviation = 1
+
+ ***
+```{r}
+boxplot(scale(dat))
+```
+
+K-means compared to Hierarchical Clustering
+======
+Hierarchical Clustering
+-----
+- cluster count can be determined post hoc
+- linkages are robust against scaling differences in fields
+- good at extracting "strand" clusters
+- quadratic time complexity : ~ $O(n^2)$
+- repeatable
+
+K-Means
+----
+- "k" cluster count must be given up front.
+- scaling affects centroid calculation, consider normalizing if possible.
+- good at extracting "spherical" clusters
+- near-linear time complexity : ~ $O(n)$
+- requires random initialization, results may not be repeatable in some cases
+
+Distribution-based clustering
+========================================================
+type : sub-section
+Bio break? - 15m
+- Expectation Maximaztion
+
+Expectation Maximization
+==========
+```{r}
+require(EMCluster)
+```
+<a title="By 3mta3 (talk) 16:55, 23 March 2009 (UTC) (Own work) [CC BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0) or GFDL (http://www.gnu.org/copyleft/fdl.html)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AEm_old_faithful.gif"><img width="512" alt="Em old faithful" src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Em_old_faithful.gif"/></a>
+***
+- based on probability distributions
+- no hard assignment of points to clusters, instead use probabilities
+- underlying distributions can be anything, gaussians are common 
+
+Expectation Maximization
+==========
+```{r}
+require(EMCluster)
+```
+<a title="By 3mta3 (talk) 16:55, 23 March 2009 (UTC) (Own work) [CC BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0) or GFDL (http://www.gnu.org/copyleft/fdl.html)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AEm_old_faithful.gif"><img width="512" alt="Em old faithful" src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Em_old_faithful.gif"/></a>
+***
+-  Calculate expected value of log likelihood function:
+$$
+Q(\boldsymbol\theta|\boldsymbol\theta^{(t)}) = \operatorname{E}_{\mathbf{Z}|\mathbf{X},\boldsymbol\theta^{(t)}}\left[ \log L (\boldsymbol\theta;\mathbf{X},\mathbf{Z})  \right]
+$$
+  - with respect to the conditional distribution of $Z$ given $X$ under the current estimate of the parameters $\theta^{(t)}$.
+- Find the parameter that maximizes : 
+$$
+\boldsymbol\theta^{(t+1)} = \underset{\boldsymbol\theta}{\operatorname{arg\,max}} \ Q(\boldsymbol\theta|\boldsymbol\theta^{(t)})
+$$
+
+Expectation Maximization
+==========
+<a title="By 3mta3 (talk) 16:55, 23 March 2009 (UTC) (Own work) [CC BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0) or GFDL (http://www.gnu.org/copyleft/fdl.html)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AEm_old_faithful.gif"><img width="512" alt="Em old faithful" src="https://upload.wikimedia.org/wikipedia/commons/a/a7/Em_old_faithful.gif"/></a>
+
+***
+Plain english: 
+
+- Initialize $\theta$ to one or more random values.
+- Compute the best value for $Z$ given the $\theta$ values.
+- Then use the computed values to compute a better value for $\theta$.
+- Rinse and repeat.
+
+
+Expectation Maximization
+==========
+EM works well when you have a good idea of the underlying distribution of the data.
+In this case, normal deviates
+```{r, eval=F}
+means = c(0,20,-15)
+x = rnorm(300, means[1], 10)
+y = rnorm(100, means[2], 1)
+z = rnorm(100, means[3], 1)
+dat = data.frame(x=c(x,y,z))
+ggplot(data = dat,aes(x=x)) + geom_histogram()
+```
+
+Expectation Maximization
+==========
+EM works well when you have a good idea of the underlying distribution of the data.
+In this case, normal deviates
+```{r, echo=F}
+library(ggplot2)
+means = c(0,20,-15)
+x = rnorm(300, means[1], 10)
+y = rnorm(100, means[2], 1)
+z = rnorm(100, means[3], 1)
+dat = data.frame(x=c(x,y,z))
+ggplot(data = dat,aes(x=x)) + geom_histogram()
+```
+
+Expectation Maximization
+==========
+```{r}
+
+library(EMCluster)
+sem = shortemcluster(dat, simple.init(dat, nclass = 3))
+em = emcluster(dat, sem, assign.class=T)
+colors = brewer.pal(3, "Spectral")[em$class]
+dat$class = colors
+ggplot(data = dat, aes(x=x, fill=class)) + geom_histogram(position="dodge")
+
+```
+
+Expectation Maximization
+==========
+EM models the distribution parameters, and can capture them even if distributions overlap.
+```{r}
+em$Mu
+as.matrix(means)
+```
+
+Expectation Maximization
+==========
+Considerations
+- If distribution characteristics are known, EM works well at recovering from noise and overlap in cluster boundaries.
+- Parameterization includes cluster count *and* mixture model specification. 
+- Most similar to K-means, except cluster assignment is *soft*, rather than *hard* as in km.
+
+Expectation Maximization
+==========
+
+Strengths:
+- Can easily adapt to different models/kernels (besides gaussian).
+- Retrieves clusters *and* cluster model coefficients!
+- Fast, iterative algorithm. Complexity depends on number of iterations and time to compute E and M steps.
+
+Weaknesses:
+- Requires more parameterization up front than any other model(cluster count, model expectation (e.g. gaussian), convergence, tolerance, etc.)
+- Complexity dependent on chosen model parameters.
+
+Density-based Clustering
+=========
+type : sub-section
+- DBScan
+
+
+
+DBScan
+==========
+Density-based Spatial Clustering of Applications With Noise
+Points are:
+- Core - within $\epsilon$ of $p$ (min points).
+- Reachable - within $\epsilon$ of a core point.
+- Outliner - neither are true.
+
+***
+
+<a title="By Chire (Own work) [CC BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3ADBSCAN-Illustration.svg"><img width="512" alt="DBSCAN-Illustration" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/DBSCAN-Illustration.svg/640px-DBSCAN-Illustration.svg.png"/></a>
+
+
+DBScan
+==========
+Look at iris again
+```{r}
+library("dbscan")
+data(iris)
+iris <- as.matrix(iris[,1:4])
+res <- dbscan(iris, eps = .5, minPts = 5)
+res
+```
+
+DBScan
+==========
+Look at iris again
+```{r}
+library("dbscan")
+kNNdistplot(USArrests, k = 5)
+eps = 20
+abline(h=eps, col = "red", lty=2)
+res <- dbscan(USArrests, eps = eps, minPts = 3)
+res
+```
+
+DBScan
+==========
+```{r}
+arrests = USArrests
+arrests$cluster = factor(res$cluster)
+arrests[arrests$cluster ==1,]
+arrests[arrests$cluster ==2,]
+arrests[arrests$cluster ==3,]
+```
+
+DBScan
+==========
+```{r}
+arrests = USArrests
+arrests$cluster = factor(res$cluster)
+ggpairs(arrests, mapping=ggplot2::aes(fill=cluster,color=cluster))
+```
+
+DBScan
+==========
+Scale fields with differing mean/variance in order to prevent one dimension from dominating the NN cluster metric
+```{r}
+res <- dbscan(scale(USArrests), eps = 1, minPts = 3)
+res
+```
+
+DBScan
+==========
+```{r}
+arrests = USArrests
+arrests$cluster = factor(res$cluster)
+ggpairs(arrests, mapping=ggplot2::aes(fill=cluster,color=cluster))
+```
+
+DBScan
+===========
+
+Strengths:
+- Does not require cluster count parameter
+- Finds arbitrary shapes with consistent density
+  - Avoid "thin line" effect of hierarchical clustering
+- Excludes outliers from clusters (i.e. can eliminate noise)
+- Requires two parameters
+- (Mostly) invariant to ordering
+
+Weaknesses:
+- Non-deterministic clusters possible during "ties" among neighbors
+- Suffers from curse of dimensionality issues
+- Doesn't handle clusters of differing density 
+- Relies on expert knowledge to set $\epsilon$ and $p$.
+- Expensive algorithm $O(n^2)$, although pre-indexing can yield $O(log(n))$.
+
+DBScan
+=========
+See Also : OPTICS
+- "Ordering Points to Identify The Clustering Structure"
+- Overcomes density variance between clusters problem in DBScan
+
+***
+<a title="By Chire (Own work) [Public domain], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AOPTICS.svg"><img width="512" alt="OPTICS" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/OPTICS.svg/512px-OPTICS.svg.png"/></a>
+
+Graph-based Clustering
+===========
+type : sub-section
+- HCS 
+
+HCS
+====
+Highly Connected Subgraph
+- Find the *minimum cut* on a graph
+- Partition graph into two subgraphs
+- Recursively run on the subgraphs
+
+***
+<a title="By Fredseadroid (Own work) [CC0], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AHCS_Algorithm.gif"><img width="256" alt="HCS Algorithm" src="https://upload.wikimedia.org/wikipedia/commons/1/1b/HCS_Algorithm.gif"/></a>
+
+
+HCS
+====
+```{r}
+# source("https://bioconductor.org/biocLite.R")
+# biocLite("RBGL")
+# biocLite("Rgraphviz")
+library(RBGL)
+library(Rgraphviz)
+con <- file(system.file("XML/conn.gxl",package="RBGL"), open="r")
+coex <- fromGXL(con)
+coex
+```
+
+HCS
+=====
+```{r}
+plot(coex)
+```
+
+
+HCS
+=====
+```{r}
+plot(coex)
+```
+***
+```{r}
+highlyConnSG(coex)
+```
+
+MCL
+===
+MCL - Markov Cluster Algorithm
+
+<a title="Micans.org : MCL - a cluster algorithm for graphs" href="http://micans.org"><img width=512 src="http://micans.org/mcl/img/fa75.png"/></a> 
+- Process has four phases:
+  - (Optional-required for directed graphs) add self links
+  - "Expansion" through standard matrix multiplication
+  - "Inflation" through column wise exponentiation (I) and renormalization
+  - Rinse and repeat
+
+Picture courtesy of http://micans.org and Stijn van Dongen
+
+MCL
+===
+MCL works with adjacency matrices
+```{r}
+library(MCL)
+adjacency <- matrix(c(0,1,1,1,0,0,0,0,0,1,0,1,1,1,0,0,0,0,1,1,
+                      0,1,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,1,0,0,
+                      0,1,1,0,0,0,0,0,0,1,0,1,0,0,0,0,0,0,1,1,
+                      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0),
+                    byrow=TRUE, nrow=9)
+library(igraph)
+gu<-graph.adjacency(adjacency, mode="undirected")
+plot(gu)
+```
+
+MCL
+===
+Here we're running mcl and adding optional self-loops, and returning an equlibrium state matrix.
+```{r}
+res = mcl(x = adjacency, addLoops=TRUE, ESM = TRUE)
+res
+
+```
+
+MCL
+===
+We can use igraph to plot the network with our clusters
+
+```{r}
+plot(graph.adjacency(adjacency), vertex.color = res$Cluster)
+```
+
+Clustering Technique Recap
+=====
+- In general, learn as much as possible about the data before trying to cluster.
+  - Do you know the expected number of clusters?
+  - Do you know anything about the distribution?
+  - Do you know if the data is graph-like?
+- Simplify structure when/where appropriate (sparsification, network pruningu
+- Consider combining clustering with dimensionality reduction (coming soon!)
+
+Clustering Deep Dive
+====
+imdb top 5000 movies
+![imdb 5000](img/imdb5000.jpg)
+
+
+imdb
+====
+```{r}
+dat = read.csv("movie_metadata.csv")
+str(dat)
+```
+
+imdb
+====
+```{r}
+sapply(dat, is.numeric)
+```
+
+imdb
+====
+```{r}
+dat_nums = dat[,sapply(dat, is.numeric)]
+str(dat_nums)
+```
+
+imdb
+===
+```{r}
+mdat = melt(dat_nums, id.vars=c("imdb_score"))
+ggplot(mdat, aes(fill=factor(as.integer(imdb_score)), x=value)) + 
+  geom_histogram() + 
+  facet_wrap(~variable, scales="free")  
+```
+
+imdb
+===
+It can help to scale
+```{r}
+mdat = melt(dat_nums, id.vars=c("imdb_score"))
+ggplot(mdat, aes(fill=factor(as.integer(imdb_score)), x=value)) + 
+  geom_histogram() + 
+  scale_x_log10() + 
+  facet_wrap(~variable, scales="free")  
+```
+
+imdb
+===
+```{r}
+mdat = melt(dat_nums, id.vars=c("imdb_score"))
+ggplot(mdat, aes(factor(as.integer(imdb_score)), value)) + 
+  geom_boxplot(outlier.shape=NA) + 
+  facet_wrap(~variable, scales="free_y")  
+```
+
+imdb
+===
+It can help to scale
+```{r}
+mdat = melt(dat_nums, id.vars=c("imdb_score"))
+ggplot(mdat, aes(factor(as.integer(imdb_score)), value)) + 
+  geom_boxplot(outlier.shape=NA) + 
+  scale_y_log10() + 
+  facet_wrap(~variable, scales="free_y")  
+```
+
+imdb
+===
+Impute the means
+```{r}
+dat_num_imp = sapply(dat_nums, function(x) {x[is.na(x)]<-mean(x,na.rm=T); x})
+any(is.na(dat_num_imp))
+```
+
+
+imdb
+===
+Using raw data produces  very uneven clusters:
+```{r}
+kdat = kmeans(dat_num_imp, 3)
+dat$cluster = kdat$cluster
+ggplot(dat, aes(x=cluster,fill=factor(cluster))) + geom_histogram(stat="count")
+```
+
+imdb
+===
+Scaling issues in fields (budget) are dominating cluster categories:
+```{r}
+t = table(dat$cluster)
+t
+small = names(t)[which.min(t)]
+dat[dat$cluster == as.integer(small),c("movie_title", "language", "budget", "cluster")]
+median(dat$budget,na.rm=T)
+```
+
+
+
+imdb
+===
+We can scale the data so it has the same column-wise mean/variance:
+```{r}
+dat_scaled = as.data.frame(scale(dat_num_imp))
+kdat = kmeans(dat_scaled, 3)
+table(kdat$cluster)
+ds = dat_scaled
+ds$cluster = kdat$cluster
+dat$cluster = kdat$cluster
+mdat = melt(ds, id.vars=c("cluster"))
+
+```
+ 
+
+
+imdb
+===
+```{r}
+ggplot(mdat, aes(fill=factor(cluster), x=value)) + 
+  geom_histogram() + scale_x_log10()  + 
+  facet_wrap(~variable, scales="free")  
+```
+
+imdb
+===
+```{r}
+ggplot(mdat, aes(factor(cluster), value)) + 
+  geom_boxplot(outlier.shape=NA) + scale_y_log10() + 
+  facet_wrap(~variable, scales="free_y")  
+```
+
+imdb
+====
+```{r}
+library(FNN)
+closest = function(k){
+  ds = dat_scaled[kdat$cluster ==k,]
+  idx = get.knnx(ds, query = t(kdat$center[k,]))$nn.index[1]
+  idx
+  str(dat[kdat$cluster==k,][idx,])
+}
+
+```
+
+imdb
+====
+```{r}
+closest(1)
+```
+
+imdb
+====
+```{r}
+closest(2)
+```
+
+imdb
+====
+```{r}
+closest(3)
+```
+
+imdb
+====
+
+ <a title="By Booyabazooka on English Wikipedia, he:משתמש:נעמה מ on Hebrew Wikipedia, edited by The Anome to remove background ellipse and balance positions of images within frame [CC BY-SA 3.0 (http://creativecommons.org/licenses/by-sa/3.0)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AComedy_and_tragedy_masks_without_background.svg"><img width="256" alt="Comedy and tragedy masks without background" src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e7/Comedy_and_tragedy_masks_without_background.svg/256px-Comedy_and_tragedy_masks_without_background.svg.png"/></a>
+***
+
+Possible cluster labels?
+- Critically Acclaimed (higher imdb score and number of raters)
+- Popular with the Masses (higher fb likes, crowd pleaser)
+- Mediocre/mixed popularity

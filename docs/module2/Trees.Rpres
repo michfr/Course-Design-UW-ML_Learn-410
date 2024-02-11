@@ -1,0 +1,422 @@
+Trees and Forests
+========================================================
+css: ../../assets/style/uw.css
+author: Justin Donaldson
+date: `r format(Sys.Date(), format="%B-%d-%Y")`
+autosize: true
+
+Applied Machine Learning 410
+---------------------------------
+(AKA: divide and concur)
+
+Setup
+=====
+```{r setup}
+opts_chunk$set(out.width='900px', dpi=200,cache=TRUE, fig.width=9, fig.height=5 )
+
+options(width =1960)
+local({r <- getOption("repos")
+       r["CRAN"] <- "http://cran.r-project.org" 
+       options(repos=r)
+})
+library(tree)
+library(ggplot2)
+library(GGally)
+library(randomForest)
+library(ggmosaic)
+library(reshape2)
+library(rpart)
+library(caret)
+library(e1071)
+
+```
+
+
+
+A Random Forest
+===================
+(Question - Is it Fall Yet?)
+---------------
+
+<a title="Daniel Case at the English language Wikipedia [GFDL (http://www.gnu.org/copyleft/fdl.html) or CC-BY-SA-3.0 (http://creativecommons.org/licenses/by-sa/3.0/)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3ABlack_Rock_Forest_view_from_NE.jpg"><img width="1024" alt="Black Rock Forest view from NE" src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Black_Rock_Forest_view_from_NE.jpg/1024px-Black_Rock_Forest_view_from_NE.jpg"/></a>
+
+Black Rock Forest view from NE - Daniel Case
+
+Overview
+========
+type:sub-section
+
+* Why Random Forests?
+* Why Decision Trees?
+* Recap of Decision Trees
+* Recap of Random Forests
+
+Why Random Forests?
+===================
+type: section
+
+
+Why Random Forests?
+===================
+![An Empirical Evaluation of Supervised Learning in High Dimensions](img/Caruana.png)
+***
+Comparison of:
+-------------
+
+- Support Vector Machines
+- Artificial Neural Networks
+- Logistic Regression
+- Naive Bayes
+- K-Nearest Neighbors
+- Random Forests
+- Bagged Decision Trees
+- Boosted Stumps
+- Boosted Trees
+- Perceptrons
+
+Why Random Forests?
+===================
+Evaluation Data Sets:
+--------------------
+- Sturn, Calam : Ornithology
+- Digits : MNIST handwritten
+- Tis : mRNA translation sites
+- Cryst : Protein Crystallography
+- KDD98 : Donation Prediction
+- R-S : Usenet real/simulation
+- Cite : Paper Authorship
+- Dse : Newswire
+- Spam : TREC spam corpora
+- Imdb : link prediction
+
+***
+
+Error Metrics:
+-------------
+- AUC : Area under curve
+- ACC : Accuracy
+- RMS : Root Mean Squared Error
+
+
+Why are Forests useful?
+==============================
+Conclusions
+-----------
+- Boosted decision trees performed best when < 4000 dimensions
+- Random forests performed best when > 4000
+  - Easy to parellize
+  - Scales efficiently to high dimensions
+  - Performs consistently well on all three metrics
+- Non-linear methods do well when model complexity is constrained
+- Worst performing models : Naive Bayes and Perceptrons
+
+Why are Random Forests are a Solid First Choice?
+================================================
+- Ensemble Based
+- Handle boolean, categorical, numeric features with no scaling or factorization
+- Few fussy hyperparameters (forest size  is commonly sqrt(#features))
+- Automatic feature selection (within reason)
+- Quick to train, parallelizable
+- Resistant (somewhat) to overfitting
+- OOB Random Forest error metric can substitute for CV
+  - Stochastic gradient boosted trees have OOB
+
+What are Random Forest Drawbacks?
+=====================================================
+- Less interpretable than trees
+- Model size can become cumbersome
+
+Why are Ensembles Better?
+============================================
+right : 80%
+
+![Francis Galton](img/Francis_Galton_1850s.jpg)
+![Ploughing with Oxen](img/Ploughing_with_Oxen.jpg)
+***
+Sir Francis Galton
+------------------
+- Promoted Statistics and invented correlation
+- In 1906 visited a livestock fair and stumbled on contest
+- An ox was on display, villagers were invited to guess its weight
+- ~800 made guesses, but nobody got the right answer (1,198 pounds)
+- The average of the guesses came very close! (1,197 pounds)
+
+
+An Intro to Decision Trees
+========
+Quick interactive intro
+----
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Machine learning explained in interactive visualizations (part 1) <a href="http://t.co/g75lLydMH9">http://t.co/g75lLydMH9</a> <a href="https://twitter.com/hashtag/d3js?src=hash">#d3js</a> <a href="https://twitter.com/hashtag/machinelearning?src=hash">#machinelearning</a></p>&mdash; r2d3.us (@r2d3us) <a href="https://twitter.com/r2d3us/status/625681063893864449">July 27, 2015</a></blockquote>
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+
+Looking into Iris
+==============
+
+<a title="By Frank Mayfield [CC BY-SA 2.0 (http://creativecommons.org/licenses/by-sa/2.0)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AIris_virginica.jpg"><img width="256" alt="Iris virginica" src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Iris_virginica.jpg/256px-Iris_virginica.jpg"/></a>
+
+Iris Virginica 
+
+*by Frank Mayfield*
+
+***
+<a title="By No machine-readable author provided. Dlanglois assumed (based on copyright claims). [GFDL (http://www.gnu.org/copyleft/fdl.html), CC-BY-SA-3.0 (http://creativecommons.org/licenses/by-sa/3.0/) or CC BY-SA 2.5 (http://creativecommons.org/licenses/by-sa/2.5)], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File%3AIris_versicolor_3.jpg"><img width="256" alt="Iris versicolor 3" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Iris_versicolor_3.jpg/256px-Iris_versicolor_3.jpg"/></a>
+
+Iris Versicolor 
+
+*by Danielle Langlois*
+
+Looking into Iris
+=======
+
+```{r}
+head(iris, n=20)
+```
+
+
+Looking into Iris
+=======
+incremental : True
+left : 70%
+```{r, echo=FALSE }
+ggpairs(data=iris, mapping = ggplot2::aes(color = Species))
+```
+***
+Leading Questions...
+--------------------
+* Petal dimensions important?
+* Versicolor and Virginica separable?
+
+Decision Tree - rpart
+=======
+type : scrollable
+```{r, echo=FALSE}
+  m = train(Species ~ ., data=iris, method="rpart") 
+  summary(m)
+```
+
+Decision Tree
+=======
+```{r}
+plot(m$finalModel)
+text(m$finalModel)
+```
+
+Decision Tree
+=======
+```{r}
+plot(varImp(m)) 
+```
+***
+Luckily, we can get a measure of the *importance* of each field according to the model.
+- importance can be defined a number of different ways :
+  - Reduction in MSE (used in rpart)
+  - Accuracy
+  - Gini metric
+- importance does *not* imply positive or negative correlation
+
+Loss/Split Metrics
+=====
+type : sub-section
+
+
+
+Gini impurity 
+====
+$$
+G = \sum^{n_c}_{i=1}p_i(1-p_i)
+$$
+- How often a randomly chosen element would be labeled *incorrectly* if it were labeled *randomly* according to current label distribution
+- $n_c$: number of classes
+- $p_i$: ratio of the class
+
+Information gain  
+====
+type : small-equation
+$$
+IG(Ex,a)=H(Ex) -\sum_{v\in values(a)} \left(\frac{|\{x\in Ex|value(x,a)=v\}|}{|Ex|} \cdot H(\{x\in Ex|value(x,a)=v\})\right)
+$$
+or
+$$
+IG(T,a) = H(T) - H(T|a)
+$$
+- $H$ : entropy
+- $E_x$ : set of all attributes
+- $values(a)$ : set of all possible values for attribute
+- In summary : if we hold one attibute to $a$, how does this change the *information entropy*?
+  - Also, what the heck is *information entropy*?
+  
+Information Entropy
+====
+$$
+H(X) = \sum_{i=1}^n {\mathrm{P}(x_i)\,\mathrm{I}(x_i)} = -\sum_{i=1}^n {\mathrm{P}(x_i) \log_b \mathrm{P}(x_i)}
+$$
+- $X$ : discrete random variable with ${x_1, ..., x_n}$
+- $P$ : probability mass function  :  $f_X(x) = \Pr(X = x) = \Pr(\{s \in S: X(s) = x\}$
+  - all values are non-negative and sum to 1
+- $I(X)$ : Information content of $X$
+- $b$ : logarithm base (usually 2 - gain expressed in bits)
+
+Information Entropy
+====
+```{r}
+eta = function(h){
+  t = 1-h
+  - ((h * log2(h)) + (t * log2(t)))
+}
+```
+- information is at maximum when entropy (eta) at maximum
+- log scaling (by log 2) gives *unit* on a fair coin flip (i.e. think in bits)
+
+***
+```{r}
+# odds of flipping heads
+heads = (0:10)/10
+heads
+plot(heads,eta(heads), type='l')
+```
+
+Information Entropy
+====
+Splitting algorithm seeks *minimal entropy* splits
+- each branch should have biased (homogeneous) likelihoods for certain classes
+- maximizing on information gain at each split point ensures tree depth is minimal
+
+Information gain  
+====
+- *Overemphasizes fields with large numbers of labels* - Why?
+  - Fix this by taking "top n" labels (which can reduce accuracy)
+  - Fix this by taking *information gain ratio*, which requires normalizing by *intrinsic value*
+
+
+Intrinsic value
+====
+type : small-equation
+$$
+IV(Ex,a)= -\sum_{v\in values(a)} \frac{|\{x\in Ex|value(x,a)=v\}|}{|Ex|} \cdot \log_2\left(\frac{|\{x\in Ex|value(x,a)=v\}|}{|Ex|}\right)
+$$
+- the denomintor in Information gain ratio 
+- establish a value 
+
+
+Variance reduction
+====
+type : small-equation
+What if we want to handle *regression* trees?
+----
+$$
+I_{V}(N) = \frac{1}{|S|^2}\sum_{i\in S} \sum_{j\in S} \frac{1}{2}(x_i - x_j)^2 - \left(\frac{1}{|S_t|^2}\sum_{i\in S_t} \sum_{j\in S_t} \frac{1}{2}(x_i - x_j)^2 + \frac{1}{|S_f|^2}\sum_{i\in S_f} \sum_{j\in S_f} \frac{1}{2}(x_i - x_j)^2\right)
+$$
+- $S,S_t,S_f$ : set of presplit sample indices
+- Minimize the mean squared error of the two branches with a given split
+
+Further Tree Methods
+======
+type : sub-section
+Bio break! - 15m
+-----
+
+Partition Tree
+==============
+A nice option if you have exactly 2 input dimensions
+```{r, eval=FALSE}
+tree1 <- tree(Species ~ Petal.Length + Petal.Width, data = iris)
+plot(iris$Petal.Length,iris$Petal.Width,pch=19,col=as.numeric(iris$Species))
+partition.tree(tree1,label="Species",add=TRUE)
+legend(1.75,4.5,legend=unique(iris$Species),col=unique(as.numeric(iris$Species)),pch=19)
+```
+
+Partition Tree
+==============
+A nice option if you have exactly 2 input dimensions
+```{r, echo=FALSE}
+tree1 <- tree(Species ~ Petal.Length + Petal.Width, data = iris)
+plot(iris$Petal.Length,iris$Petal.Width,pch=19,col=as.numeric(iris$Species))
+partition.tree(tree1,label="Species",add=TRUE)
+legend(1.75,4.5,legend=unique(iris$Species),col=unique(as.numeric(iris$Species)),pch=19)
+```
+
+Deep Dive into Forests
+==============
+type : sub-section
+Now that we've recapped the basics of trees, time to go back into forests.
+
+
+
+```{r child="sub/IrisDeepDive.RPres"}
+
+```
+
+
+RF vs. GBT
+=====
+Random forests are trained/evaluated independently
+----
+![slide1](img/forest/0001.png)
+
+RF vs. GBT
+=====
+The resulting class probabilities (or regressions) are *averaged*.
+----
+![slide1](img/forest/0002.png)
+
+RF vs. GBT
+=====
+GBTs, on the other hand, are trained sequentially.
+----
+![slide1](img/forest/0003.png)
+
+RF vs. GBT
+=====
+Errors (residual) from the first tree are used to train the second.
+----
+![slide1](img/forest/0004.png)
+
+RF vs. GBT
+=====
+And so on...
+----
+![slide1](img/forest/0005.png)
+
+RF vs. GBT
+=====
+The results of all trees are *summed* 
+----
+![slide1](img/forest/0006.png)
+
+
+```{r child="sub/Agaricus.Rpres"}
+
+```
+
+Deep Dive into Adult.csv
+=======================
+type: sub-section
+Bio break? - 15m
+
+
+```{r child="sub/AdultDeepDive.Rpres"}
+
+```
+
+Conclusion
+======
+type : sub-section
+- Trees are unreasonably effective!
+- Trees:
+  - fast/flexible
+  - among most intuitive models
+- Random forests :
+  - only 1 common hyperparameter
+  - dominant when >4K features
+  - embarassingly parallel training, predictions
+  - OOB error rates allow use of entire dataset for training
+- Gradient Boosted Trees :
+  - dominant when <4K features
+  - few hyperparameters compared to more sophisticated linear models.
+  - fast training with specialized libraries.
+  - OOB error rates with stochastic gradient boosting
+
+  
+
+

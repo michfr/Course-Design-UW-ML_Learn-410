@@ -1,0 +1,45 @@
+---
+title: "Overview"
+output:  html_document
+
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rvest)
+library(tm)
+library(wordcloud)
+library(rvest)
+```
+
+# UW 410 - Applied Machine Learning
+
+```{r, echo=FALSE}
+url<- read_html("https://en.wikipedia.org/wiki/Machine_learning")
+nodes<-html_nodes(x=url, css="#mw-content-text")
+texts <-html_text(nodes)
+pal <- brewer.pal(11, "Spectral")
+pal <- pal[-(4:5)]
+corp = paste(texts,collapse=" ")
+wordcloud(corp, colors=pal, max.words=100, min.freq=5,ordered.colors=F)
+```
+
+## Module Overview:
++ Module 1 - [Generalized Linear Models](https://jdonaldson.github.io/uw-mlearn410/module1/linearModels.html) 
+    + Appendix [Presentation](https://jdonaldson.github.io/uw-mlearn410/module1/Presentation1.pdf)
+    + Appendix [Communities Notebook](https://jdonaldson.github.io/uw-mlearn410/module1/communities.nb.html)
++ Module 2 - [Trees and Forests](https://jdonaldson.github.io/uw-mlearn410/module2/Trees.html) 
++ Module 3 - [Clustering](https://jdonaldson.github.io/uw-mlearn410/module3/Clustering.html) 
++ Module 4 - [Dimensionality Reduction](https://jdonaldson.github.io/uw-mlearn410/module4/DimensionalityReduction2017-03-29.pptx) [(pdf)](https://jdonaldson.github.io/uw-mlearn410/module4/DimensionalityReduction2017-03-29.pdf) 
++ Module 5 - [Topic Models](https://jdonaldson.github.io/uw-mlearn410/module5/topic_models.pptx) [(pdf)](https://jdonaldson.github.io/uw-mlearn410/module5/topic_models.pdf)
+    + Appendix [Topic Modelling Notebook](https://jdonaldson.github.io/uw-mlearn410/module5/topic_modeling.html)
++ Module 6 - [Recommender Systems](https://jdonaldson.github.io/uw-mlearn410/module6/RecSys.html)
++ Module 7 - [Anomaly Detection](https://jdonaldson.github.io/uw-mlearn410/module7/Anomaly_pres.html)
++ Module 8 - [Big Data](https://jdonaldson.github.io/uw-mlearn410/module8/Big%20Data%20Lecture.pdf)
+
+## Homework : 
++ Homework 1 - [Supervised Learning](https://jdonaldson.github.io/uw-mlearn410/homework/homework1.nb.html)
++ Homework 2 - [Unsupervised Learning](https://jdonaldson.github.io/uw-mlearn410/homework/homework2.nb.html)
+
+## Misc :
++ Final Project - [Example Datasets](https://jdonaldson.github.io/uw-mlearn410/datasets/Datasets.html)
